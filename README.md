@@ -4,50 +4,104 @@ A compliant, small-batch job application email system for reaching out to startu
 
 ## Features
 
-- **Send** — Template-based personalized emails via Gmail SMTP
+- **Send** — Template-based personalized emails via Resend, Gmail SMTP, or SendGrid
 - **Read** — Check inbox and read replies via IMAP
 - **Auto-detect** — Automatically find replies from contacted companies
 - **Track** — SQLite database for contacts, companies, and email history
 - **Safe** — Daily limits, random intervals, send window, blacklist support
 - **Compliant** — CAN-SPAM headers, unsubscribe support
 
-## Quick Start (One Command Setup)
+## Platform Dependencies
+
+| Service | Purpose | Free Tier | Required |
+|---------|---------|-----------|----------|
+| [Resend](https://resend.com) | Email sending API | 100 emails/day, 3000/month | Yes (recommended provider) |
+| [Cloudflare](https://cloudflare.com) | DNS + Email Routing (receive replies) | Free | Yes |
+| Domain registrar | Custom domain (e.g. `yourname.dev`) | ~$10-15/year | Yes |
+| [Notion](https://notion.so) | Email tracking dashboard (via [email_to_notion](https://github.com/MichaelYangzk/email_to_notion)) | Free | Optional |
+
+## Quick Start
 
 ```bash
-git clone https://github.com/shuaiyy-ux/job-auto-apply.git
+git clone https://github.com/MichaelYangzk/job-auto-apply.git
 cd job-auto-apply
 npm install
-npm run setup     # Interactive wizard — walks you through everything
 ```
 
-The setup wizard will:
-1. Ask for your Gmail address
-2. Guide you to create a Gmail App Password
-3. Write your `.env` config
-4. Initialize the database
-5. Verify your connection
-6. Optionally send a test email
+## Email Provider Setup (Recommended: Resend + Custom Domain)
 
-### Manual Setup (if you prefer)
+Using a custom domain with Resend avoids Gmail account bans and gives you full control over deliverability.
+
+### Step 1: Buy a Domain
+
+Buy a domain from any registrar (Namecheap, GoDaddy, Cloudflare Registrar, etc.).
+
+> Tip: Use a domain that looks professional and relates to your name (e.g. `yourname.dev`, `yourname.ai`).
+
+### Step 2: Move DNS to Cloudflare
+
+1. Create a free account at [cloudflare.com](https://cloudflare.com)
+2. Add your domain → Cloudflare gives you two nameservers
+3. Go to your domain registrar → change nameservers to Cloudflare's
+4. Wait for DNS propagation (usually < 1 hour)
+
+### Step 3: Set Up Resend (Sending)
+
+1. Create account at [resend.com](https://resend.com)
+2. Go to **Domains** → **Add Domain** → enter your domain
+3. Resend gives you 3 DNS records. Add them in Cloudflare DNS:
+
+   | Type | Name | Content | Priority |
+   |------|------|---------|----------|
+   | TXT | `resend._domainkey` | `p=MIGfMA0GCS...` (DKIM key) | — |
+   | MX | `send` | `feedback-smtp.us-east-1.amazonses.com` | 10 |
+   | TXT | `send` | `v=spf1 include:amazonses.com ~all` | — |
+
+4. (Recommended) Add a DMARC record:
+
+   | Type | Name | Content |
+   |------|------|---------|
+   | TXT | `_dmarc` | `v=DMARC1; p=none;` |
+
+5. Back in Resend → click **Verify DNS** → wait for green checkmarks
+6. Copy your API key from [resend.com/api-keys](https://resend.com/api-keys)
+
+### Step 4: Set Up Cloudflare Email Routing (Receiving Replies)
+
+1. In Cloudflare Dashboard → select your domain → **Email** → **Email Routing**
+2. Enable Email Routing
+3. **Destination addresses** → add your personal Gmail (e.g. `you@gmail.com`) → verify via email
+4. **Routing rules** → create a rule:
+   - Custom address: `reply@yourdomain.com`
+   - Action: Forward to → `you@gmail.com`
+
+Now when someone replies to your cold email, it arrives in your Gmail inbox.
+
+### Step 5: Configure .env
 
 ```bash
-cp .env.example .env     # Edit with your credentials
-npm run init-db          # Initialize database
-node src/index.js verify # Test connection
+EMAIL_PROVIDER=resend
+FROM_EMAIL=yourname@yourdomain.com
+FROM_NAME=Your Name
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+REPLY_TO=reply@yourdomain.com
+DAILY_LIMIT=25
 ```
 
-## Gmail App Password Setup
+### Step 6: Verify and Test
 
-1. **Enable 2-Step Verification**
-   - Go to https://myaccount.google.com/signinoptions/two-step-verification
-   - Follow the steps to enable
+```bash
+node src/index.js verify    # Check Resend connection
+node src/index.js send      # Send scheduled emails
+```
 
-2. **Create App Password**
-   - Go to https://myaccount.google.com/apppasswords
-   - App name: `Job Apply`
-   - Copy the 16-character password
+## Alternative: Gmail App Password Setup
 
-3. **Configure .env**
+> Warning: Gmail may disable accounts used for cold outreach, even at low volume. Use at your own risk.
+
+1. Enable 2-Step Verification at https://myaccount.google.com/signinoptions/two-step-verification
+2. Create App Password at https://myaccount.google.com/apppasswords
+3. Configure `.env`:
    ```bash
    EMAIL_PROVIDER=gmail-app-password
    FROM_EMAIL=your.email@gmail.com
@@ -55,11 +109,7 @@ node src/index.js verify # Test connection
    GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
    DAILY_LIMIT=25
    ```
-
-4. **Verify connection**
-   ```bash
-   node src/index.js verify
-   ```
+4. Verify: `node src/index.js verify`
 
 ## Commands
 
@@ -143,6 +193,15 @@ Cool AI,Jane Doe,Jane,jane@cool.ai,CTO,https://linkedin.com/in/jane,Company webs
 | Max followups | 3 | Per contact |
 | Blacklist | Enabled | Respects unsubscribe |
 
+## Supported Email Providers
+
+| Provider | Config `EMAIL_PROVIDER` | Notes |
+|----------|------------------------|-------|
+| **Resend** | `resend` | Recommended. Requires custom domain. |
+| Gmail App Password | `gmail-app-password` | Risk of account ban. |
+| SendGrid | `sendgrid` | Enterprise-grade, generous free tier. |
+| Custom SMTP | `smtp` | Any SMTP server. |
+
 ## Project Structure
 
 ```
@@ -154,7 +213,7 @@ job-auto-apply/
 │   │   ├── init.js           # DB initialization
 │   │   └── schema.sql        # Table definitions
 │   ├── email/
-│   │   ├── sender.js         # SMTP sending
+│   │   ├── sender.js         # Email sending (Resend / SMTP)
 │   │   ├── reader.js         # IMAP reading
 │   │   ├── templates.js      # Handlebars templates
 │   │   └── scheduler.js      # Cron scheduler
