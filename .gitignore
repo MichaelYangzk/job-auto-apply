@@ -26,6 +26,14 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+*.egg-info/
+
 # Personal data (never commit!)
 data/companies.csv
 data/contacts.csv

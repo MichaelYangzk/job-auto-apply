@@ -273,51 +273,108 @@ Cool AI,Jane Doe,Jane,jane@cool.ai,CTO,https://linkedin.com/in/jane,Company webs
 | SendGrid | `sendgrid` | Enterprise-grade, generous free tier. |
 | Custom SMTP | `smtp` | Any SMTP server. |
 
+## Notion Integration (Bidirectional Sync)
+
+The `python/` directory contains a bidirectional Email ↔ Notion sync system. Notion becomes your control terminal for tracking and triggering email actions.
+
+Originally forked from [shuaiyy-ux/email_to_notion](https://github.com/shuaiyy-ux/email_to_notion), extended with Gmail IMAP source, Claude LLM classification, and tight integration with the Node.js email engine.
+
+### Setup
+
+```bash
+# Install Python dependencies
+pip install -r python/requirements.txt
+
+# Add Notion credentials to .env (same file as Node.js config)
+# NOTION_TOKEN=ntn_xxxxx
+# NOTION_DATABASE_ID=xxxxx
+# LLM_PROVIDER=anthropic
+# ANTHROPIC_API_KEY=sk-ant-xxxxx
+```
+
+### Python Commands
+
+```bash
+cd python
+python main.py              # Full bidirectional cycle (push + pull)
+python main.py push         # Email → LLM → Notion
+python main.py pull         # Notion → email engine
+python main.py loop         # Continuous loop (every 2 min)
+python main.py loop --interval=60
+```
+
+### How It Works
+
+```
+        Notion Database (Control Terminal)
+        ┌───────────────────────────────────┐
+        │  Company │ Stage │ Next Action     │
+        │  Priority │ Summary │ Score        │
+        │  [Action Confirm] checkbox         │
+        └──────────┬──────────┬─────────────┘
+             PULL ↓          ↑ PUSH
+        ┌─────────┘          └──────────┐
+        │                               │
+  notion_trigger.py            gmail_source.py
+  → email_actions.py           → LLM.py (classify)
+  → Node.js CLI (src/)        → notion_sync/ (sync)
+        │                               │
+        └──────────┐          ┌─────────┘
+                   ↓          ↑
+            ┌────────────────────┐
+            │  Resend (send) +   │
+            │  Gmail IMAP (read) │
+            └────────────────────┘
+```
+
+**PUSH** — Reads incoming emails via IMAP, classifies them with Claude Haiku, syncs to Notion.
+**PULL** — You check "Action Confirm" in Notion, the system reads "Next Action" and triggers the email engine.
+
+### Notion Actions
+
+| Next Action | What Happens |
+|-------------|--------------|
+| `send_cold` | Send initial cold email to the contact |
+| `reply` | Schedule a followup email |
+| `follow_up` | Queue followup sequence |
+| `schedule` | Schedule interview-related email |
+| `archive` | Mark as not interested |
+| `ignore` | Skip, do nothing |
+
+---
+
 ## Project Structure
 
 ```
 job-auto-apply/
-├── src/
-│   ├── index.js              # CLI entry point
-│   ├── db/
-│   │   ├── database.js       # SQLite operations
-│   │   ├── init.js           # DB initialization
-│   │   └── schema.sql        # Table definitions
+├── src/                          # Node.js — email engine
+│   ├── index.js                  # CLI entry point
+│   ├── db/                       # SQLite operations
 │   ├── email/
-│   │   ├── sender.js         # Email sending (Resend / SMTP)
-│   │   ├── reader.js         # IMAP reading
-│   │   ├── templates.js      # Handlebars templates
-│   │   └── scheduler.js      # Cron scheduler
-│   ├── contacts/
-│   │   ├── manager.js        # Contact/company management
-│   │   └── import.js         # CSV import/export
-│   └── utils/
-│       ├── config.js         # Configuration loader
-│       └── logger.js         # Colored logging
-├── scripts/
-│   └── gmail-auth.js         # OAuth2 setup helper (optional)
-├── data/
-│   ├── templates/            # Email template docs
-│   ├── companies_template.csv
-│   ├── contacts_template.csv
-│   └── SF_STARTUP_SOURCES.md # Startup research sources
-├── config/
-│   └── config.example.json   # Extended config template
-├── .env.example              # Environment template
-└── SPEC.md                   # Full project specification
+│   │   ├── sender.js             # Resend / SMTP sending
+│   │   ├── reader.js             # IMAP reading
+│   │   ├── templates.js          # Handlebars templates
+│   │   └── scheduler.js          # Cron scheduler
+│   ├── contacts/                 # Contact/company management
+│   └── utils/                    # Config, logging
+├── python/                       # Python — Notion sync + LLM
+│   ├── main.py                   # Bidirectional orchestrator
+│   ├── gmail_source.py           # Gmail IMAP reader
+│   ├── LLM.py                    # Claude/GPT classification
+│   ├── email_actions.py          # Bridge to Node.js CLI
+│   ├── notion_trigger.py         # Notion action poller
+│   └── notion_sync/              # Notion API client + sync logic
+├── data/templates/               # Email templates
+├── config/                       # Extended config
+├── .env                          # Shared config (Node + Python)
+├── .env.example                  # Template
+└── package.json                  # Node.js dependencies
 ```
 
 ## Database Migrations
 
-When updating to a new version, run migrations to update your database schema:
-
 ```bash
 node src/db/migrate.js
-```
-
-To add a new migration, create a file in `src/db/migrations/`:
-```
-src/db/migrations/002_add_tags.sql
 ```
 
 ## Compliance
@@ -329,6 +386,10 @@ This tool is designed for **personal job searching**, not marketing.
 - Only use publicly available contact info
 - Keep volume low — quality over quantity
 - No deceptive subject lines
+
+## Credits
+
+- Notion sync module based on [shuaiyy-ux/email_to_notion](https://github.com/shuaiyy-ux/email_to_notion)
 
 ## License
 
