@@ -19,6 +19,7 @@ const DEFAULT_CONFIG = {
       name: process.env.FROM_NAME || 'Your Name',
       email: process.env.FROM_EMAIL || ''
     },
+    replyTo: process.env.REPLY_TO || '',
     gmailAppPassword: process.env.GMAIL_APP_PASSWORD || '',
     gmail: {
       clientId: process.env.GMAIL_CLIENT_ID || '',
@@ -27,6 +28,9 @@ const DEFAULT_CONFIG = {
     },
     sendgrid: {
       apiKey: process.env.SENDGRID_API_KEY || ''
+    },
+    resend: {
+      apiKey: process.env.RESEND_API_KEY || ''
     }
   },
   sending: {
@@ -102,6 +106,8 @@ export function validateConfig() {
     if (!cfg.email.gmail.refreshToken) errors.push('GMAIL_REFRESH_TOKEN is required');
   } else if (cfg.email.provider === 'sendgrid') {
     if (!cfg.email.sendgrid.apiKey) errors.push('SENDGRID_API_KEY is required');
+  } else if (cfg.email.provider === 'resend') {
+    if (!cfg.email.resend.apiKey) errors.push('RESEND_API_KEY is required');
   }
 
   // Sending limits

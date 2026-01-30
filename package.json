@@ -30,6 +30,7 @@
     "imapflow": "^1.2.8",
     "node-cron": "^3.0.0",
     "nodemailer": "^6.9.0",
-    "open": "^11.0.0"
+    "open": "^11.0.0",
+    "resend": "^6.9.1"
   }
 }

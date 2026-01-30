@@ -1,14 +1,19 @@
 import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { emails, contacts, blacklist } from '../db/database.js';
 import { getConfig } from '../utils/config.js';
 
 let transporter = null;
+let resendClient = null;
 
 export function createTransporter() {
   const config = getConfig();
   const provider = config.email.provider;
 
-  if (provider === 'gmail-app-password') {
+  if (provider === 'resend') {
+    resendClient = new Resend(config.email.resend.apiKey);
+    return resendClient;
+  } else if (provider === 'gmail-app-password') {
     transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 587,
@@ -45,6 +50,11 @@ export function createTransporter() {
 }
 
 export function getTransporter() {
+  const config = getConfig();
+  if (config.email.provider === 'resend') {
+    if (!resendClient) createTransporter();
+    return resendClient;
+  }
   if (!transporter) {
     createTransporter();
   }
@@ -69,23 +79,50 @@ export async function sendEmail(emailRecord) {
     return { success: false, reason: 'daily_limit' };
   }
 
-  const mailOptions = {
-    from: `"${config.email.from.name}" <${config.email.from.email}>`,
-    to: emailRecord.to_email,
-    subject: emailRecord.subject,
-    text: emailRecord.body,
-    html: emailRecord.body.replace(/\n/g, '<br>')
-  };
-
-  if (config.compliance?.includeUnsubscribe) {
-    mailOptions.headers = {
-      'List-Unsubscribe': `<mailto:${config.email.from.email}?subject=Unsubscribe>`
-    };
-  }
+  const fromAddr = config.email.from.email;
+  const fromName = config.email.from.name;
+  const replyTo = config.email.replyTo || fromAddr;
 
   try {
-    const info = await transport.sendMail(mailOptions);
-    console.log(`✓ Sent to ${emailRecord.to_email} (${info.messageId})`);
+    let messageId;
+
+    if (config.email.provider === 'resend') {
+      // Resend API
+      const { data, error } = await resendClient.emails.send({
+        from: `${fromName} <${fromAddr}>`,
+        to: [emailRecord.to_email],
+        replyTo: replyTo,
+        subject: emailRecord.subject,
+        text: emailRecord.body,
+        html: emailRecord.body.replace(/\n/g, '<br>'),
+        headers: config.compliance?.includeUnsubscribe ? {
+          'List-Unsubscribe': `<mailto:${replyTo}?subject=Unsubscribe>`
+        } : undefined,
+      });
+
+      if (error) throw new Error(error.message);
+      messageId = data.id;
+    } else {
+      // Nodemailer (SMTP)
+      const mailOptions = {
+        from: `"${fromName}" <${fromAddr}>`,
+        to: emailRecord.to_email,
+        subject: emailRecord.subject,
+        text: emailRecord.body,
+        html: emailRecord.body.replace(/\n/g, '<br>')
+      };
+
+      if (config.compliance?.includeUnsubscribe) {
+        mailOptions.headers = {
+          'List-Unsubscribe': `<mailto:${fromAddr}?subject=Unsubscribe>`
+        };
+      }
+
+      const info = await transport.sendMail(mailOptions);
+      messageId = info.messageId;
+    }
+
+    console.log(`✓ Sent to ${emailRecord.to_email} (${messageId})`);
 
     emails.markSent(emailRecord.id);
 
@@ -102,7 +139,7 @@ export async function sendEmail(emailRecord) {
     }
     contacts.updateStatus(emailRecord.contact_id, newStatus);
 
-    return { success: true, messageId: info.messageId };
+    return { success: true, messageId };
   } catch (error) {
     console.error(`✗ Failed to send to ${emailRecord.to_email}:`, error.message);
     emails.markFailed(emailRecord.id, error.message);
@@ -150,10 +187,29 @@ export async function processScheduledEmails() {
 }
 
 export async function verifyConnection() {
+  const config = getConfig();
+
+  if (config.email.provider === 'resend') {
+    try {
+      if (!resendClient) createTransporter();
+      const apiKey = config.email.resend.apiKey;
+      if (!apiKey || !apiKey.startsWith('re_')) {
+        throw new Error('Invalid Resend API key format');
+      }
+      console.log(`✓ Resend configured`);
+      console.log(`  From: ${config.email.from.email}`);
+      console.log(`  API Key: ${apiKey.slice(0, 8)}...${apiKey.slice(-4)}`);
+      console.log(`  Tip: Send a test email to verify delivery`);
+      return true;
+    } catch (error) {
+      console.error('✗ Resend connection failed:', error.message);
+      return false;
+    }
+  }
+
   const transport = getTransporter();
   try {
     await transport.verify();
-    const config = getConfig();
     console.log(`✓ SMTP connected: ${config.email.from.email}`);
     return true;
   } catch (error) {
