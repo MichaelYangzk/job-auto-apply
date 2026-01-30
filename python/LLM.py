@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 import sys
 import json
-from typing import Literal
+from typing import Literal, Optional
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, ConfigDict
@@ -127,7 +127,7 @@ class LLMResult(BaseModel):
     Structured output contract for job-application email triage.
 
     Hard constraints:
-    - Output must contain only these fields: stage, priority, next_action, importance_score, summary, company.
+    - Output must contain only these fields: stage, priority, next_action, importance_score, summary, company, due_date.
     - Do not add new fields or properties.
     - Do not use any primary key strategy or thread identifier guessing.
     - Use only the provided email metadata and body text.
@@ -161,6 +161,17 @@ class LLMResult(BaseModel):
             "Employer name inferred from sender domain, signature, subject, or body. "
             "If a reliable company name is already provided, keep it. If unsure, return empty string."
         )
+    )
+    due_date: Optional[str] = Field(
+        default=None,
+        description=(
+            "If the email states an explicit deadline for the candidate, "
+            "extract it as ISO 8601 date (YYYY-MM-DD). "
+            "Only extract dates that are clear deadlines "
+            "(e.g., 'by February 15', 'deadline: Feb 8', 'please respond by Friday'). "
+            "Do not infer deadlines from vague language. "
+            "Return null if no explicit deadline."
+        ),
     )
 
 def sanitize_body_text(text: str) -> str:

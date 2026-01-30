@@ -7,6 +7,9 @@ PROPERTY_TYPES = {
     "Conversation ID": "rich_text",
     "Action Confirm": "checkbox",
     "Status Updated": "checkbox",
+    "Description": "rich_text",
+    "Due date": "date",
+    "Effort level": "select",
     "Email Link": "url",
     "Error": "rich_text",
     "From": "rich_text",
@@ -19,6 +22,7 @@ PROPERTY_TYPES = {
     "Stage": "select",
     "Subject": "rich_text",
     "Summary": "rich_text",
+    "Task type": "multi_select",
 }
 
 
