@@ -1,0 +1,46 @@
+{
+  "email": {
+    "provider": "gmail-app-password",
+    "from": {
+      "name": "Your Name",
+      "email": "your.email@gmail.com"
+    },
+    "gmail": {
+      "clientId": "your-client-id",
+      "clientSecret": "your-client-secret",
+      "refreshToken": "your-refresh-token"
+    },
+    "sendgrid": {
+      "apiKey": "your-sendgrid-api-key"
+    }
+  },
+  "sending": {
+    "dailyLimit": 25,
+    "minIntervalMinutes": 5,
+    "maxIntervalMinutes": 15,
+    "sendWindowStart": "09:00",
+    "sendWindowEnd": "17:00",
+    "timezone": "America/Los_Angeles",
+    "sendDays": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+  },
+  "followup": {
+    "firstFollowupDays": 4,
+    "secondFollowupDays": 10,
+    "finalFollowupDays": 18,
+    "maxFollowups": 3
+  },
+  "user": {
+    "name": "Your Name",
+    "title": "Software Engineer",
+    "specialty": "Full-stack / AI / Backend",
+    "yearsExperience": 5,
+    "linkedin": "https://linkedin.com/in/yourprofile",
+    "portfolio": "https://yourportfolio.com",
+    "github": "https://github.com/yourusername"
+  },
+  "compliance": {
+    "includeUnsubscribe": true,
+    "physicalAddress": "Your City, State",
+    "respectBlacklist": true
+  }
+}

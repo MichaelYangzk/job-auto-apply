@@ -1,0 +1,4 @@
+name,website,industry,size,funding_stage,source,notes,priority
+Example AI,https://example-ai.com,AI,30,Series A,Y Combinator,Building AI tools for developers,5
+DevTool Inc,https://devtool.io,Developer Tools,15,Seed,Wellfound,Open source database company,4
+Fintech Startup,https://fintech-startup.com,Fintech,50,Series B,TechCrunch,Payments infrastructure,3

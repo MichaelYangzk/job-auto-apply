@@ -1,0 +1,35 @@
+{
+  "name": "job-auto-apply",
+  "version": "0.1.0",
+  "description": "A compliant, small-batch job application email system",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "setup": "node scripts/setup.js",
+    "start": "node src/index.js",
+    "send": "node src/index.js send",
+    "status": "node src/index.js status",
+    "init-db": "node src/db/init.js",
+    "setup-gmail": "node scripts/gmail-auth.js"
+  },
+  "keywords": [
+    "job-search",
+    "email",
+    "cold-email",
+    "automation",
+    "gmail"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^9.0.0",
+    "commander": "^11.0.0",
+    "dotenv": "^16.0.0",
+    "googleapis": "^170.1.0",
+    "handlebars": "^4.7.0",
+    "imapflow": "^1.2.8",
+    "node-cron": "^3.0.0",
+    "nodemailer": "^6.9.0",
+    "open": "^11.0.0"
+  }
+}
