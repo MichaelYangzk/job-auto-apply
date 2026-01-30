@@ -29,6 +29,8 @@ def map_properties(row) -> Dict[str, Any]:
             continue
         if isinstance(val, float) and math.isnan(val):
             continue
+        if isinstance(val, str) and val.strip() == "":
+            continue
         props[prop] = val
     thread_key = row.get("conversation_id") or row.get("message_id")
     if thread_key:
