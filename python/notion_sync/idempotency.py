@@ -23,11 +23,19 @@ def choose_thread_key(row) -> Optional[str]:
     return None
 
 
-def _norm_stage(value: Optional[str]) -> Optional[str]:
+def _norm_stage(value) -> Optional[str]:
     if value is None:
         return None
     if isinstance(value, dict):
-        value = str(value)
+        sel = value.get("select")
+        if isinstance(sel, dict):
+            value = sel.get("name")
+        elif value.get("type") == "select":
+            value = None
+        else:
+            value = str(value)
+    if value is None:
+        return None
     return str(value).strip().lower() or None
 
 
